@@ -1,0 +1,84 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <ESP32SPISlave.h>
+
+//Pines de entrada de las leds y el potenciometro
+#define I2C_ADDR 0x55         
+#define POT_INPUT_PIN 36      
+#define e1_r 26          // led roja      
+#define e1_g 13          // led verde      
+#define e1_b 14          // led azul      
+
+int t_delay;                  // Variable para almacenar el tiempo de retraso para los LEDs
+uint8_t led_select;           // Variable para seleccionar el color del LED
+
+ESP32SPISlave spiDevice;      // Objeto para gestionar la comunicación SPI en modo esclavo
+static constexpr size_t BUF_SIZE = 32; // Tamaño del buffer de recepción SPI
+uint8_t spiRxBuf[BUF_SIZE];   // Buffer para almacenar datos recibidos por SPI
+
+void handleI2CRequest();      // Declaración de la función que maneja las solicitudes I2C
+
+uint16_t adcValue;            // Variable para almacenar el valor del potenciómetro leído
+uint8_t mappedValue;          // Variable para almacenar el valor mapeado del potenciómetro
+
+void setup() {
+  Serial.begin(115200);       // Inicializa la comunicación serial a 115200 bps
+  delay(1000);                // Espera 1 segundo para estabilizar la conexión
+
+  // configuracion de los leds de salida
+  pinMode(e1_r, OUTPUT);
+  pinMode(e1_g, OUTPUT);
+  pinMode(e1_b, OUTPUT);
+
+  // leds apagados al inicio
+  digitalWrite(e1_r, LOW);
+  digitalWrite(e1_g, LOW);
+  digitalWrite(e1_b, LOW);
+
+  // modo de datos SPI y el tamaño de la cola del esclavo SPI
+  spiDevice.setDataMode(SPI_MODE0);
+  spiDevice.setQueueSize(1); 
+  spiDevice.begin(VSPI);     // Inicia SPI
+
+  memset(spiRxBuf, 0, BUF_SIZE); // Inicia el buffer 
+
+  // función de solicitud I2C
+  Wire.onRequest(handleI2CRequest);
+  Wire.begin((uint8_t) I2C_ADDR); // Inicia el bus I2C 
+}
+
+void loop() {
+  spiDevice.wait(spiRxBuf, NULL, BUF_SIZE); 
+
+  // Procesa los datos recibidos a través de SPI
+  while (spiDevice.available()) {
+    t_delay = spiRxBuf[1];    // Obtiene el tiempo de retraso del segundo byte recibido
+    led_select = spiRxBuf[0];  // Obtiene el color del LED del primer byte recibido
+    spiDevice.pop();           
+  }
+
+  // Controla la led elegida segun el numero que se elija en el menú  
+  if (led_select == 1) {
+    digitalWrite(e1_r, HIGH);  
+    delay(t_delay * 20);       
+    digitalWrite(e1_r, LOW);   
+    led_select = 0;            
+  } else if (led_select == 2) {
+    digitalWrite(e1_g, HIGH);  
+    delay(t_delay * 20);       
+    digitalWrite(e1_g, LOW); 
+    led_select = 0;            
+  } else if (led_select == 3) {
+    digitalWrite(e1_b, HIGH);  
+    delay(t_delay * 20);       
+    digitalWrite(e1_b, LOW);   
+    led_select = 0;            // Resetear las leds
+  }
+}
+
+// Función para manejar solicitudes de lectura del potenciómetro en el bus I2C
+void handleI2CRequest() {
+  adcValue = analogRead(POT_INPUT_PIN);  
+  mappedValue = map(adcValue, 0, 4095, 0, 255); // Mapear el valor del potenciometro
+  Wire.write(mappedValue);                
+}
