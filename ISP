@@ -170,6 +170,7 @@ int main(void)
 	          tiempo_cadena = ubicacion_coma + 1;
 
 	          // Elimina espacios y caracteres extra alrededor de la duración
+			// recordar que solo se envian si se pone un espacio al final 
 	          while (*tiempo_cadena == ' ' || *tiempo_cadena == '\n' || *tiempo_cadena == '\r') {
 	              tiempo_cadena++;
 	          }
@@ -183,14 +184,15 @@ int main(void)
 	          color_led = atoi(identificador_led);
 
 	          // Validación para asegurar valores válidos
+			// no funciona si el valor es una letra 
 	          if ((color_led >= 1 && color_led <= 3) && (tiempo_intervalo > 0)) {
 	              enviarPorSPI(color_led, tiempo_intervalo); // Configura la conexión SPI
 	          } else {
-	              uint8_t mensaje_error[] = "Error: Asegúrese de ingresar valores válidos para el LED y la duración.\n";
+	              uint8_t mensaje_error[] = "Error: los valores no son validos\n";
 	              HAL_UART_Transmit(&huart2, mensaje_error, sizeof(mensaje_error), 100);
 	          }
 	      } else {
-	          uint8_t formato_invalido[] = "Error: Formato no válido.\n";
+	          uint8_t formato_invalido[] = "Error: valores no validos\n";
 	          HAL_UART_Transmit(&huart2, formato_invalido, sizeof(formato_invalido), 100);
 	      }
 
@@ -209,7 +211,7 @@ int main(void)
 
 	      HAL_Delay(1000);
 
-	      // Vuelve a mostrar el menú
+	      // Vuelve a mostrar el menú siempre volver a poner el numero que se quiere usar 
 	      mostrarMenu();
 	      HAL_UART_Receive(&huart2, opciones_usuario, 1, HAL_MAX_DELAY);
 
